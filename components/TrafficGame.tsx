@@ -272,13 +272,28 @@ const TrafficGame: React.FC = () => {
             if (obj.timer && obj.timer > 0) {
               obj.timer--;
               if (obj.timer === 0) {
-                 if (obj.state === 'RED') obj.state = 'GREEN';
-                 else if (obj.state === 'GREEN') {
-                    obj.state = 'YELLOW';
-                    obj.timer = 120;
+                 if (obj.state === 'RED') {
+                   // From Red -> Yellow (Get Ready)
+                   obj.state = 'YELLOW';
+                   obj.nextState = 'GREEN';
+                   obj.timer = 90; // 1.5 sec prep
                  } else if (obj.state === 'YELLOW') {
-                    obj.state = 'RED';
-                    obj.timer = 300;
+                   if (obj.nextState === 'GREEN') {
+                     // From Yellow(Prep) -> Green
+                     obj.state = 'GREEN';
+                     obj.nextState = 'YELLOW';
+                     obj.timer = 400; // Long green
+                   } else {
+                     // From Yellow(Stop) -> Red
+                     obj.state = 'RED';
+                     obj.nextState = 'YELLOW';
+                     obj.timer = 300; // Red
+                   }
+                 } else if (obj.state === 'GREEN') {
+                    // From Green -> Yellow (Stop)
+                    obj.state = 'YELLOW';
+                    obj.nextState = 'RED';
+                    obj.timer = 120; // 2 sec warn
                  }
               }
             }
@@ -290,16 +305,33 @@ const TrafficGame: React.FC = () => {
           const playerNoseY = player.y;
           const playerRearY = player.y + PLAYER_HEIGHT;
           
-          // Red Light
+          // Traffic Light Collision
           if (obj.type === TrafficObjectType.TRAFFIC_LIGHT && !obj.processed) {
              const stopLineY = obj.y + 100;
-             if (stopLineY > playerNoseY - 200 && stopLineY < playerNoseY && obj.state === 'RED') {
-                if (metrics.message !== 'STOP!') setMessage('STOP!', 'neutral');
+             const isRed = obj.state === 'RED';
+             const isYellowToGreen = obj.state === 'YELLOW' && obj.nextState === 'GREEN';
+             const isYellowToRed = obj.state === 'YELLOW' && obj.nextState === 'RED';
+
+             // approaching warning
+             if (stopLineY > playerNoseY - 200 && stopLineY < playerNoseY) {
+               if (isRed || isYellowToGreen) {
+                  if (metrics.message !== 'STOP!') setMessage('STOP!', 'neutral');
+               } else if (isYellowToRed) {
+                  if (metrics.message !== 'PREPARE TO STOP') setMessage('PREPARE TO STOP', 'neutral');
+               }
              }
+
+             // Crossing check
              if (playerRearY < stopLineY && playerNoseY + 10 > stopLineY) {
-               if (obj.state === 'RED') {
+               if (isRed || isYellowToGreen) {
                  metrics.score -= 50;
                  setMessage('RAN RED LIGHT! -50', 'bad');
+                 obj.processed = true;
+               } else if (isYellowToRed) {
+                 // Soft penalty if rushing through late yellow, or no penalty if close?
+                 // Let's strict it up a bit for game challenge
+                 metrics.score -= 10;
+                 setMessage('RISKY YELLOW! -10', 'neutral');
                  obj.processed = true;
                } else if (obj.state === 'GREEN') {
                  metrics.score += 20;
@@ -307,11 +339,15 @@ const TrafficGame: React.FC = () => {
                  obj.processed = true;
                }
              }
-             if (stopLineY > playerNoseY && stopLineY < playerNoseY + 150 && player.speed === 0 && obj.state === 'RED') {
-                if (metrics.message !== 'WAITING...') {
-                  setMessage('WAITING...', 'good');
-                  metrics.score += 0.5; 
-                }
+             
+             // Waiting bonus
+             if (stopLineY > playerNoseY && stopLineY < playerNoseY + 150 && player.speed === 0) {
+               if (isRed || isYellowToGreen) {
+                  if (metrics.message !== 'WAITING...') {
+                    setMessage('WAITING...', 'good');
+                    metrics.score += 0.5; 
+                  }
+               }
              }
           }
 

@@ -35,6 +35,7 @@ export interface TrafficObject {
   x?: number; // Specific X position for trees/decorations
   lane?: Lane; // If null, applies to all lanes
   state?: 'RED' | 'YELLOW' | 'GREEN';
+  nextState?: 'RED' | 'GREEN'; // To track cycle direction (Red->Yellow->Green vs Green->Yellow->Red)
   timer?: number; // For light cycling
   hasPassed?: boolean;
   hasStopped?: boolean; // For stop signs
