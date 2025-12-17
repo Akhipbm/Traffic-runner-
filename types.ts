@@ -16,12 +16,14 @@ export enum TrafficObjectType {
   SPEED_LIMIT = 'SPEED_LIMIT',
   OBSTACLE_CAR = 'OBSTACLE_CAR',
   SPEED_BUMP = 'SPEED_BUMP',
+  TREE = 'TREE',
 }
 
 export interface TrafficObject {
   id: string;
   type: TrafficObjectType;
   y: number; // Distance from player (starts positive, moves to 0 then negative)
+  x?: number; // Specific X position for trees/decorations
   lane?: Lane; // If null, applies to all lanes
   state?: 'RED' | 'YELLOW' | 'GREEN';
   timer?: number; // For light cycling
