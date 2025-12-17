@@ -1,3 +1,4 @@
+// ... (keeping existing imports)
 import React, { useRef, useEffect, useState } from 'react';
 import { GameState, Lane, TrafficObject, TrafficObjectType, PlayerState, GameMetrics, Pedestrian, User } from '../types';
 import { 
@@ -661,17 +662,31 @@ const TrafficGame: React.FC = () => {
             ctx.fillText('STOP', 0, 0);
             ctx.restore();
 
-            // Draw Countdown Timer if active
-            if (obj.stopTimer !== undefined && obj.stopTimer > 0 && obj.stopTimer < 300) {
-                ctx.save();
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 40px Arial';
-                ctx.shadowColor = 'black';
-                ctx.shadowBlur = 4;
-                ctx.textAlign = 'center';
-                // Draw it on the road in front of the line
-                ctx.fillText(Math.ceil(obj.stopTimer / 60).toString(), ROAD_X + ROAD_WIDTH / 2, lineY - 30);
-                ctx.restore();
+            // Draw Countdown Timer if active or approaching
+            // Show if valid timer, not stopped yet (so counter is needed), and sufficiently close
+            if (obj.stopTimer !== undefined && !obj.hasStopped && obj.y > 0 && obj.y < CANVAS_HEIGHT) {
+                const distToSign = obj.y - (player.y);
+                if (distToSign < 400 && distToSign > -100) {
+                    ctx.save();
+                    ctx.translate(ROAD_X + ROAD_WIDTH / 2, lineY - 40);
+                    
+                    // background circle
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    const seconds = Math.ceil(obj.stopTimer / 60);
+                    ctx.fillStyle = '#ffffff'; 
+                    ctx.font = 'bold 30px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(seconds.toString(), 0, 2);
+                    ctx.restore();
+                }
             }
          }
 
