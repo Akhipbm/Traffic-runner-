@@ -1,0 +1,22 @@
+export const CANVAS_WIDTH = 600;
+export const CANVAS_HEIGHT = 800;
+
+export const LANE_WIDTH = 120;
+export const ROAD_WIDTH = LANE_WIDTH * 3;
+export const ROAD_X = (CANVAS_WIDTH - ROAD_WIDTH) / 2;
+
+export const PLAYER_WIDTH = 50;
+export const PLAYER_HEIGHT = 90;
+export const PLAYER_Y = CANVAS_HEIGHT - 150; // Fixed player position from top
+
+export const MAX_SPEED = 15;
+export const ACCELERATION = 0.2;
+export const BRAKING = 0.5;
+export const FRICTION = 0.05;
+
+// Visual Colors
+export const COLOR_GRASS = '#4ade80'; // Tailwind green-400
+export const COLOR_ROAD = '#374151'; // Tailwind gray-700
+export const COLOR_MARKING = '#e5e7eb'; // Tailwind gray-200
+export const COLOR_PLAYER = '#ef4444'; // Tailwind red-500
+export const COLOR_DASHBOARD = '#1f2937'; // Tailwind gray-800

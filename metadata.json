@@ -1,0 +1,5 @@
+{
+  "name": "Traffic Rules Runner",
+  "description": "A 2D driving game where obeying traffic laws earns you points. Stop at red lights, yield at stop signs, and drive safely.",
+  "requestFramePermissions": []
+}
