@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { GameState, Lane, TrafficObject, TrafficObjectType, PlayerState, GameMetrics } from '../types';
+import { GameState, Lane, TrafficObject, TrafficObjectType, PlayerState, GameMetrics, Pedestrian } from '../types';
 import { 
   CANVAS_WIDTH, CANVAS_HEIGHT, ROAD_X, LANE_WIDTH, ROAD_WIDTH,
   PLAYER_Y, PLAYER_WIDTH, PLAYER_HEIGHT, MAX_SPEED, ACCELERATION,
@@ -21,8 +21,8 @@ const TrafficGame: React.FC = () => {
     y: PLAYER_Y
   });
   
-  const currentZoneLimitRef = useRef<number>(MAX_SPEED); // Tracks the current speed limit zone
-  const overspeedTimerRef = useRef<number>(0); // Cooldown for speed limit penalty
+  const currentZoneLimitRef = useRef<number>(MAX_SPEED); 
+  const overspeedTimerRef = useRef<number>(0); 
 
   const inputRef = useRef({ left: false, right: false, up: false, down: false });
   const objectsRef = useRef<TrafficObject[]>([]);
@@ -71,22 +71,19 @@ const TrafficGame: React.FC = () => {
 
   const spawnTree = () => {
     const id = Math.random().toString(36).substr(2, 9);
-    // Randomly choose Left side or Right side of road
     const side = Math.random() > 0.5 ? 'left' : 'right';
     let xPos = 0;
 
     if (side === 'left') {
-      // Spawn between 0 and ROAD_X
       xPos = Math.random() * (ROAD_X - TREE_WIDTH);
     } else {
-      // Spawn between ROAD_END and CANVAS_WIDTH
       xPos = (ROAD_X + ROAD_WIDTH) + Math.random() * (CANVAS_WIDTH - (ROAD_X + ROAD_WIDTH) - TREE_WIDTH);
     }
 
     const newObj: TrafficObject = {
       id,
       type: TrafficObjectType.TREE,
-      y: -200, // Above screen
+      y: -200, 
       x: xPos,
       processed: false
     };
@@ -111,9 +108,23 @@ const TrafficGame: React.FC = () => {
       newObj.limit = Math.random() > 0.5 ? 8 : 12; // 80kmh or 120kmh
     } else if (type === TrafficObjectType.SPEED_BUMP) {
       newObj.limit = 5; // ~50kmh
+    } else if (type === TrafficObjectType.ZEBRA_CROSSING) {
+      // Spawn 1 to 3 pedestrians
+      const numPeds = 1 + Math.floor(Math.random() * 2);
+      const peds: Pedestrian[] = [];
+      for(let i=0; i<numPeds; i++) {
+        const direction = Math.random() > 0.5 ? 1 : -1;
+        peds.push({
+          id: id + '_p_' + i,
+          x: direction === 1 ? ROAD_X - 30 - (Math.random() * 50) : ROAD_X + ROAD_WIDTH + 30 + (Math.random() * 50),
+          speed: 1 + Math.random() * 1.5,
+          direction: direction,
+          walkingPhase: 0
+        });
+      }
+      newObj.pedestrians = peds;
     } else if (type === TrafficObjectType.OBSTACLE_CAR) {
       newObj.lane = Math.floor(Math.random() * 3);
-      // Randomly stationary (broken down) or moving slow
       const isStationary = Math.random() < 0.2;
       newObj.speed = isStationary ? 0 : 4 + Math.random() * 4; 
       newObj.color = Math.random() > 0.5 ? '#3b82f6' : '#22c55e';
@@ -185,17 +196,12 @@ const TrafficGame: React.FC = () => {
           if (player.speed > 0) player.speed = Math.max(player.speed - FRICTION, 0);
         }
 
-        // Smooth Lane Transition
         const targetX = ROAD_X + (player.lane * LANE_WIDTH) + (LANE_WIDTH - PLAYER_WIDTH) / 2;
         player.x += (targetX - player.x) * 0.15;
 
-        // Move World
         metrics.distance += (player.speed / 100);
         
-        // --- 2. General Rule Checks ---
-        
-        // Continuous Speed Limit Zone Check
-        // If speed > currentZoneLimit + 1 buffer, penalize every 60 frames
+        // Speed Checks
         if (player.speed > currentZoneLimitRef.current + 1) {
           overspeedTimerRef.current++;
           if (overspeedTimerRef.current > 60) {
@@ -208,7 +214,7 @@ const TrafficGame: React.FC = () => {
         }
 
         if (player.speed > 2 && player.speed <= currentZoneLimitRef.current) {
-          metrics.score += 0.05; // Passive score for driving safely
+          metrics.score += 0.05; 
         }
 
         if (messageTimerRef.current > 0) {
@@ -220,24 +226,21 @@ const TrafficGame: React.FC = () => {
         spawnTimerRef.current++;
         treeSpawnTimerRef.current++;
 
-        // Trees spawn frequently
         if (treeSpawnTimerRef.current > 20) {
           spawnTree();
           treeSpawnTimerRef.current = 0;
         }
 
-        // Road objects
         if (spawnTimerRef.current > 350) { 
-           // Check gap
            const lastRoadObj = objectsRef.current.filter(o => o.type !== TrafficObjectType.TREE).pop();
            
            if (!lastRoadObj || lastRoadObj.y > 50) {
              const rand = Math.random();
-             // Balanced spawning
              if (rand < 0.15) spawnObject(TrafficObjectType.TRAFFIC_LIGHT, -200);
-             else if (rand < 0.3) spawnObject(TrafficObjectType.STOP_SIGN, -200);
-             else if (rand < 0.5) spawnObject(TrafficObjectType.SPEED_LIMIT, -200);
-             else if (rand < 0.7) spawnObject(TrafficObjectType.SPEED_BUMP, -200);
+             else if (rand < 0.25) spawnObject(TrafficObjectType.STOP_SIGN, -200);
+             else if (rand < 0.35) spawnObject(TrafficObjectType.SPEED_LIMIT, -200);
+             else if (rand < 0.45) spawnObject(TrafficObjectType.ZEBRA_CROSSING, -200);
+             else if (rand < 0.55) spawnObject(TrafficObjectType.SPEED_BUMP, -200);
              else spawnObject(TrafficObjectType.OBSTACLE_CAR, -300);
              spawnTimerRef.current = 0;
            }
@@ -252,6 +255,17 @@ const TrafficGame: React.FC = () => {
           }
           
           obj.y += relativeSpeed;
+
+          // Pedestrian Update
+          if (obj.type === TrafficObjectType.ZEBRA_CROSSING && obj.pedestrians) {
+            obj.pedestrians.forEach(ped => {
+               // Only move pedestrians if they are close to being on screen or on screen
+               if (obj.y > -200 && obj.y < CANVAS_HEIGHT) {
+                  ped.x += ped.speed * ped.direction;
+                  ped.walkingPhase += 0.2;
+               }
+            });
+          }
 
           // Traffic Light Cycling
           if (obj.type === TrafficObjectType.TRAFFIC_LIGHT) {
@@ -271,8 +285,6 @@ const TrafficGame: React.FC = () => {
           }
 
           // --- LOGIC CHECKS ---
-          
-          // Only check logic for non-trees
           if (obj.type === TrafficObjectType.TREE) return;
 
           const playerNoseY = player.y;
@@ -325,11 +337,69 @@ const TrafficGame: React.FC = () => {
             }
           }
 
-          // Speed Limit Signs (Update Zone)
+          // Zebra Crossing Logic
+          if (obj.type === TrafficObjectType.ZEBRA_CROSSING) {
+             const crossY = obj.y;
+             const crossHeight = 60;
+             const dangerZoneStart = crossY - 10;
+             const dangerZoneEnd = crossY + crossHeight + 10;
+
+             // Check collision with pedestrians
+             if (obj.pedestrians) {
+                obj.pedestrians.forEach(ped => {
+                   // Pedestrian HIT box
+                   const pedHitX = ped.x;
+                   const pedHitY = crossY + 10; // Vertical center of zebra
+                   
+                   // Player Bounding Box
+                   const pLeft = player.x;
+                   const pRight = player.x + PLAYER_WIDTH;
+                   const pTop = player.y;
+                   const pBottom = player.y + PLAYER_HEIGHT;
+
+                   // Simple box collision
+                   if (pedHitX > pLeft - 10 && pedHitX < pRight + 10 && 
+                       pedHitY > pTop && pedHitY < pBottom) {
+                       metrics.score = -999;
+                       gameStateRef.current = GameState.GAME_OVER;
+                       setMessage('HIT PEDESTRIAN! LICENSE REVOKED', 'bad');
+                   }
+                });
+             }
+
+             // Check Crossing Rules
+             if (!obj.processed && playerRearY < crossY) {
+               // Player passed the crossing line
+               // Check if any pedestrians were on the road
+               const anyoneOnRoad = obj.pedestrians?.some(p => p.x > ROAD_X && p.x < ROAD_X + ROAD_WIDTH);
+               
+               if (anyoneOnRoad) {
+                 metrics.score -= 50;
+                 setMessage('FAILED TO YIELD! -50', 'bad');
+               } else {
+                 // Bonus if we waited properly (heuristic: user stopped near it)
+                 if (obj.hasStopped) {
+                    metrics.score += 20;
+                    setMessage('Yielded to Pedestrians +20', 'good');
+                 }
+               }
+               obj.processed = true;
+             }
+             
+             // Check if waiting
+             if (!obj.processed && playerNoseY > dangerZoneStart - 100 && playerNoseY < dangerZoneStart) {
+                const anyoneOnRoad = obj.pedestrians?.some(p => p.x > ROAD_X - 20 && p.x < ROAD_X + ROAD_WIDTH + 20);
+                if (anyoneOnRoad && player.speed < 0.5) {
+                   obj.hasStopped = true; 
+                   setMessage('Yielding...', 'good');
+                }
+             }
+          }
+
+          // Speed Limit Signs
           if (obj.type === TrafficObjectType.SPEED_LIMIT && !obj.processed) {
              const signY = obj.y + 50;
              if (playerRearY < signY) {
-                // Update the current zone limit
                 if (obj.limit) {
                   currentZoneLimitRef.current = obj.limit;
                   setMessage(`LIMIT SET TO ${obj.limit * 10}`, 'neutral');
@@ -338,16 +408,14 @@ const TrafficGame: React.FC = () => {
              }
           }
 
-          // Speed Bump (Instant penalty if too fast crossing)
+          // Speed Bump
           if (obj.type === TrafficObjectType.SPEED_BUMP && !obj.processed) {
             const bumpY = obj.y + 20; 
-            // Player crossing bump
             if (playerRearY < bumpY && playerNoseY + 20 > bumpY) {
                const maxBumpSpeed = obj.limit || 5; 
                if (player.speed > maxBumpSpeed) {
                  metrics.score -= 30;
                  setMessage('HIT BUMP TOO FAST! -30', 'bad');
-                 // Slight physical bounce/slowdown effect
                  playerRef.current.speed *= 0.8;
                } else {
                  metrics.score += 15;
@@ -389,39 +457,29 @@ const TrafficGame: React.FC = () => {
       ctx.fillStyle = COLOR_GRASS;
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Trees (Behind road objects)
+      // Trees
       objectsRef.current.forEach(obj => {
         if (obj.type === TrafficObjectType.TREE && obj.x !== undefined) {
            ctx.save();
            const treeX = obj.x;
            const treeY = obj.y;
            
-           // Simple Pine Tree
            ctx.shadowColor = 'rgba(0,0,0,0.2)';
            ctx.shadowBlur = 5;
-           
-           // Trunk
            ctx.fillStyle = '#5d4037';
            ctx.fillRect(treeX + TREE_WIDTH/2 - 5, treeY + TREE_HEIGHT - 15, 10, 15);
-           
-           // Leaves (Triangle stack)
-           ctx.fillStyle = '#15803d'; // Dark green
-           
-           // Bottom tier
+           ctx.fillStyle = '#15803d'; 
            ctx.beginPath();
            ctx.moveTo(treeX, treeY + TREE_HEIGHT - 10);
            ctx.lineTo(treeX + TREE_WIDTH, treeY + TREE_HEIGHT - 10);
            ctx.lineTo(treeX + TREE_WIDTH/2, treeY + 20);
            ctx.fill();
-
-           // Top tier
-           ctx.fillStyle = '#16a34a'; // Lighter green
+           ctx.fillStyle = '#16a34a';
            ctx.beginPath();
            ctx.moveTo(treeX + 5, treeY + 40);
            ctx.lineTo(treeX + TREE_WIDTH - 5, treeY + 40);
            ctx.lineTo(treeX + TREE_WIDTH/2, treeY);
            ctx.fill();
-           
            ctx.restore();
         }
       });
@@ -481,6 +539,58 @@ const TrafficGame: React.FC = () => {
             ctx.restore();
          }
 
+         // ZEBRA CROSSING
+         if (obj.type === TrafficObjectType.ZEBRA_CROSSING) {
+           const y = obj.y;
+           const h = 60;
+           ctx.fillStyle = '#ffffff';
+           const stripeW = 30;
+           const gap = 20;
+           for(let lx = ROAD_X + 10; lx < ROAD_X + ROAD_WIDTH; lx += (stripeW + gap)) {
+              ctx.fillRect(lx, y, stripeW, h);
+           }
+
+           // Draw Pedestrians
+           if (obj.pedestrians) {
+              obj.pedestrians.forEach(ped => {
+                 const px = ped.x;
+                 const py = y + 15;
+                 
+                 ctx.strokeStyle = '#fff';
+                 ctx.lineWidth = 3;
+                 ctx.lineCap = 'round';
+                 
+                 // Head
+                 ctx.beginPath();
+                 ctx.arc(px, py, 6, 0, Math.PI * 2);
+                 ctx.stroke();
+                 
+                 // Body
+                 ctx.beginPath();
+                 ctx.moveTo(px, py + 6);
+                 ctx.lineTo(px, py + 25);
+                 ctx.stroke();
+
+                 // Legs (Animate)
+                 const phase = Math.sin(ped.walkingPhase);
+                 ctx.beginPath();
+                 ctx.moveTo(px, py + 25);
+                 ctx.lineTo(px - (5 * phase), py + 40);
+                 ctx.moveTo(px, py + 25);
+                 ctx.lineTo(px + (5 * phase), py + 40);
+                 ctx.stroke();
+                 
+                 // Arms
+                 ctx.beginPath();
+                 ctx.moveTo(px, py + 12);
+                 ctx.lineTo(px - (5 * -phase), py + 20);
+                 ctx.moveTo(px, py + 12);
+                 ctx.lineTo(px + (5 * -phase), py + 20);
+                 ctx.stroke();
+              });
+           }
+         }
+
          // SPEED BUMP
          if (obj.type === TrafficObjectType.SPEED_BUMP) {
             const bumpY = obj.y;
@@ -492,29 +602,20 @@ const TrafficGame: React.FC = () => {
             ctx.beginPath();
             ctx.rect(ROAD_X, bumpY, ROAD_WIDTH, bumpHeight);
             ctx.clip();
-
             ctx.fillStyle = '#f59e0b';
             ctx.fillRect(ROAD_X, bumpY, ROAD_WIDTH, bumpHeight);
-            
             ctx.fillStyle = '#1f2937';
             for (let i = 0; i < numStripes; i++) {
                 if (i % 2 === 0) {
                     ctx.fillRect(ROAD_X + (i * stripeWidth), bumpY, stripeWidth, bumpHeight);
                 }
             }
-            
             // Bevel
             ctx.strokeStyle = 'rgba(255,255,255,0.3)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(ROAD_X, bumpY);
             ctx.lineTo(ROAD_X + ROAD_WIDTH, bumpY);
-            ctx.stroke();
-
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath();
-            ctx.moveTo(ROAD_X, bumpY + bumpHeight);
-            ctx.lineTo(ROAD_X + ROAD_WIDTH, bumpY + bumpHeight);
             ctx.stroke();
             ctx.restore();
          }

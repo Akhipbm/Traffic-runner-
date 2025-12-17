@@ -17,6 +17,15 @@ export enum TrafficObjectType {
   OBSTACLE_CAR = 'OBSTACLE_CAR',
   SPEED_BUMP = 'SPEED_BUMP',
   TREE = 'TREE',
+  ZEBRA_CROSSING = 'ZEBRA_CROSSING',
+}
+
+export interface Pedestrian {
+  id: string;
+  x: number;
+  speed: number;
+  direction: 1 | -1; // 1 = right, -1 = left
+  walkingPhase: number; // For simple animation
 }
 
 export interface TrafficObject {
@@ -35,6 +44,7 @@ export interface TrafficObject {
   limit?: number; // For speed limit signs and bumps
   speed?: number; // For obstacle cars
   color?: string; // For obstacle cars
+  pedestrians?: Pedestrian[]; // For Zebra Crossing
 }
 
 export interface PlayerState {

@@ -11,9 +11,10 @@ export const PLAYER_Y = CANVAS_HEIGHT - 150; // Fixed player position from top
 
 // Physics - Adjusted for better control
 export const MAX_SPEED = 15;
-export const ACCELERATION = 0.2; 
-export const BRAKING = 0.8; // Increased braking power so user can react to bumps
-export const FRICTION = 0.05;
+// Reduced acceleration significantly to make speed controllable
+export const ACCELERATION = 0.05; 
+export const BRAKING = 1.0; // Strong braking for emergency stops
+export const FRICTION = 0.02;
 
 // Visuals
 export const TREE_WIDTH = 60;
