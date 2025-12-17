@@ -533,6 +533,19 @@ const TrafficGame: React.FC = () => {
                 });
              }
 
+             // Check if blocking crossing while pedestrians are on road
+             const isBlocking = playerRearY > crossY && playerNoseY < crossY + crossHeight;
+             if (isBlocking) {
+                const pedestriansOnRoad = obj.pedestrians?.some(p => p.x > ROAD_X && p.x < ROAD_X + ROAD_WIDTH);
+                if (pedestriansOnRoad) {
+                   metrics.score -= 0.5;
+                   // Only set message if not already showing a bad message
+                   if (metrics.messageType !== 'bad' || metrics.message === 'BLOCKING CROSSING!') {
+                      setMessage('BLOCKING CROSSING!', 'bad');
+                   }
+                }
+             }
+
              // Check Crossing Rules
              if (!obj.processed && playerRearY < crossY) {
                // Player passed the crossing line
