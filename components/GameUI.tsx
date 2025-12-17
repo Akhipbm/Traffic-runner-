@@ -8,7 +8,6 @@ interface GameUIProps {
   currentUser: User | null;
   allUsers: User[];
   onLogin: (username: string) => void;
-  onDeleteUser: (username: string) => void;
   onLogout: () => void;
   onStart: () => void;
   onRestart: () => void;
@@ -21,13 +20,11 @@ const GameUI: React.FC<GameUIProps> = ({
   currentUser,
   allUsers,
   onLogin,
-  onDeleteUser,
   onLogout,
   onStart, 
   onRestart 
 }) => {
   const [nameInput, setNameInput] = useState('');
-  const [showAdmin, setShowAdmin] = useState(false);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +37,7 @@ const GameUI: React.FC<GameUIProps> = ({
     .filter(u => u.highScore > 0) // Only show positive scores
     .sort((a, b) => b.highScore - a.highScore);
     
-  const isWin = metrics.distance >= 2000;
+  const isWin = metrics.distance >= 1000;
   
   // Calculate total infractions for Perfect Game check
   const totalInfractions = (Object.values(metrics.infractions) as number[]).reduce((a, b) => a + b, 0);
@@ -59,7 +56,7 @@ const GameUI: React.FC<GameUIProps> = ({
           <div className="bg-slate-900/80 text-white p-4 rounded-xl border border-slate-700 shadow-xl backdrop-blur-sm">
              <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Distance</div>
              <div className="text-3xl font-mono font-bold">
-               {Math.floor(metrics.distance)} <span className="text-sm text-slate-400">/ 2000m</span>
+               {Math.floor(metrics.distance)} <span className="text-sm text-slate-400">/ 1000m</span>
              </div>
           </div>
         </div>
@@ -123,72 +120,28 @@ const GameUI: React.FC<GameUIProps> = ({
       {/* LOGIN SCREEN */}
       {gameState === GameState.LOGIN && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center pointer-events-auto backdrop-blur-sm">
-           {!showAdmin ? (
-             <div className="bg-white p-8 rounded-2xl max-w-md w-full text-center shadow-2xl transform transition-all">
-               <h1 className="text-4xl font-black text-slate-900 mb-6">TRAFFIC RUNNER</h1>
-               <form onSubmit={handleLoginSubmit} className="space-y-4">
-                 <div>
-                   <label className="block text-left text-sm font-bold text-slate-700 mb-1">Enter Player Name</label>
-                   <input 
-                     type="text" 
-                     required
-                     className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
-                     placeholder="e.g. SpeedRacer"
-                     value={nameInput}
-                     onChange={(e) => setNameInput(e.target.value)}
-                   />
-                 </div>
-                 <button 
-                   type="submit"
-                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg shadow-lg transition-colors"
-                 >
-                   PLAY NOW
-                 </button>
-               </form>
-               <div className="mt-6 pt-6 border-t border-slate-200">
-                  <button onClick={() => setShowAdmin(true)} className="text-sm text-slate-500 hover:text-slate-800 underline">
-                    Admin: Manage Users ({allUsers.length})
-                  </button>
+           <div className="bg-white p-8 rounded-2xl max-w-md w-full text-center shadow-2xl transform transition-all">
+             <h1 className="text-4xl font-black text-slate-900 mb-6">TRAFFIC RUNNER</h1>
+             <form onSubmit={handleLoginSubmit} className="space-y-4">
+               <div>
+                 <label className="block text-left text-sm font-bold text-slate-700 mb-1">Enter Player Name</label>
+                 <input 
+                   type="text" 
+                   required
+                   className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
+                   placeholder="e.g. SpeedRacer"
+                   value={nameInput}
+                   onChange={(e) => setNameInput(e.target.value)}
+                 />
                </div>
-             </div>
-           ) : (
-             <div className="bg-white p-6 rounded-2xl max-w-2xl w-full h-3/4 flex flex-col shadow-2xl">
-               <div className="flex justify-between items-center mb-4">
-                 <h2 className="text-2xl font-bold text-slate-900">User Management</h2>
-                 <button onClick={() => setShowAdmin(false)} className="text-slate-500 hover:text-slate-900">Close</button>
-               </div>
-               <div className="flex-1 overflow-auto border rounded-lg">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-100 sticky top-0">
-                      <tr>
-                        <th className="p-3 font-bold text-slate-700">Player</th>
-                        <th className="p-3 font-bold text-slate-700">High Score</th>
-                        <th className="p-3 font-bold text-slate-700 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allUsers.map(u => (
-                        <tr key={u.username} className="border-b border-slate-100 hover:bg-slate-50">
-                           <td className="p-3 text-slate-800">{u.username}</td>
-                           <td className="p-3 text-slate-800 font-mono">{u.highScore}</td>
-                           <td className="p-3 text-right">
-                             <button 
-                               onClick={() => onDeleteUser(u.username)}
-                               className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 text-sm font-bold"
-                             >
-                               Delete
-                             </button>
-                           </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-               </div>
-               <div className="mt-4 text-sm text-slate-500">
-                 Total Users: {allUsers.length}
-               </div>
-             </div>
-           )}
+               <button 
+                 type="submit"
+                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg shadow-lg transition-colors"
+               >
+                 PLAY NOW
+               </button>
+             </form>
+           </div>
         </div>
       )}
 
@@ -202,7 +155,7 @@ const GameUI: React.FC<GameUIProps> = ({
               <p className="text-slate-600 mb-6">Welcome, <span className="font-bold text-blue-600">{currentUser?.username}</span></p>
               
               <div className="space-y-4 text-left bg-slate-100 p-4 rounded-lg mb-6 text-sm text-black">
-                 <div className="text-center font-bold text-slate-700 mb-2">OBJECTIVE: DRIVE 2000m</div>
+                 <div className="text-center font-bold text-slate-700 mb-2">OBJECTIVE: DRIVE 1000m</div>
                 <div className="flex items-center gap-2">
                   <span className="bg-red-500 text-white px-2 py-0.5 rounded text-xs font-bold">STOP</span>
                   <span>at Red Lights & Stop Signs (Wait 5s)</span>

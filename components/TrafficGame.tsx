@@ -124,20 +124,6 @@ const TrafficGame: React.FC = () => {
     }));
   };
 
-  const handleDeleteUser = (username: string) => {
-    const updatedUsers = deleteUser(username);
-    setUiState(prev => ({ 
-      ...prev, 
-      allUsers: updatedUsers,
-      // If we deleted the current user, logout
-      currentUser: prev.currentUser?.username === username ? null : prev.currentUser,
-      gameState: prev.currentUser?.username === username ? GameState.LOGIN : prev.gameState
-    }));
-    if (uiState.currentUser?.username === username) {
-      gameStateRef.current = GameState.LOGIN;
-    }
-  };
-
   const handleLogout = () => {
     // Save score if abandoning game
     if (gameStateRef.current === GameState.PLAYING) {
@@ -154,7 +140,7 @@ const TrafficGame: React.FC = () => {
     metricsRef.current = { 
       score: 0, 
       distance: 0, 
-      message: 'Drive Safely! Reach 2000m', 
+      message: 'Drive Safely! Reach 1000m', 
       messageType: 'neutral', 
       combo: 0,
       infractions: {
@@ -216,7 +202,6 @@ const TrafficGame: React.FC = () => {
     } else if (type === TrafficObjectType.SPEED_LIMIT) {
       newObj.limit = Math.random() > 0.5 ? 8 : 12; // 80kmh or 120kmh
     } else if (type === TrafficObjectType.SPEED_BUMP) {
-      // UPDATED: Limit increased to 10
       newObj.limit = 10; 
     } else if (type === TrafficObjectType.ZEBRA_CROSSING) {
       // Spawn 1 to 3 pedestrians
@@ -313,7 +298,7 @@ const TrafficGame: React.FC = () => {
         metrics.distance += (player.speed / 100);
         
         // --- Distance Check for Win Condition ---
-        if (metrics.distance >= 2000) {
+        if (metrics.distance >= 1000) {
            gameStateRef.current = GameState.GAME_OVER;
            setMessage('COURSE COMPLETED!', 'good');
         }
@@ -604,7 +589,7 @@ const TrafficGame: React.FC = () => {
             
             // Hitting bump (FIXED COLLISION LOGIC)
             if (bumpY > playerNoseY && bumpY < playerRearY) {
-               const maxBumpSpeed = obj.limit || 10; 
+               const maxBumpSpeed = 10; 
                if (player.speed > maxBumpSpeed) {
                  metrics.score -= 30;
                  metrics.infractions.bumps++; // Track
@@ -1038,7 +1023,6 @@ const TrafficGame: React.FC = () => {
         currentUser={uiState.currentUser}
         allUsers={uiState.allUsers}
         onLogin={handleLogin}
-        onDeleteUser={handleDeleteUser}
         onLogout={handleLogout}
         onStart={startGame}
         onRestart={startGame}
