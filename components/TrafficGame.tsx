@@ -300,7 +300,7 @@ const TrafficGame: React.FC = () => {
         // --- Distance Check for Win Condition ---
         if (metrics.distance >= 1000) {
            gameStateRef.current = GameState.GAME_OVER;
-           setMessage('COURSE COMPLETED!', 'good');
+           setMessage('COMPLETED!', 'good');
         }
         
         // Speed Checks

@@ -211,7 +211,7 @@ const GameUI: React.FC<GameUIProps> = ({
 
               <h2 className={`text-3xl font-black mb-2 
                 ${isPerfectRun ? 'text-yellow-600' : isWin ? 'text-green-600' : 'text-red-600'}`}>
-                {isPerfectRun ? 'SUPER GOOD DRIVER!' : isWin ? 'COURSE COMPLETED!' : 'LICENSE REVOKED!'}
+                {isPerfectRun ? 'SUPER GOOD DRIVER!' : isWin ? 'COMPLETED!' : 'LICENSE REVOKED!'}
               </h2>
               
               {isPerfectRun && (
