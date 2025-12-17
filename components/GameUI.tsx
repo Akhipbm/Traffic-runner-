@@ -36,7 +36,10 @@ const GameUI: React.FC<GameUIProps> = ({
     }
   };
 
-  const sortedUsers = [...allUsers].sort((a, b) => b.highScore - a.highScore);
+  const sortedUsers = [...allUsers]
+    .filter(u => u.highScore > 0) // Only show positive scores
+    .sort((a, b) => b.highScore - a.highScore);
+    
   const isWin = metrics.distance >= 2000;
   
   // Calculate total infractions for Perfect Game check
@@ -235,7 +238,7 @@ const GameUI: React.FC<GameUIProps> = ({
                     <span className="font-mono font-bold text-yellow-200">{u.highScore}</span>
                   </div>
                 ))}
-                {sortedUsers.length === 0 && <div className="text-slate-500 text-sm">No scores yet</div>}
+                {sortedUsers.length === 0 && <div className="text-slate-500 text-sm">No high scores yet</div>}
               </div>
             </div>
           </div>
@@ -299,6 +302,7 @@ const GameUI: React.FC<GameUIProps> = ({
                     <span className="font-mono font-bold text-yellow-200">{u.highScore}</span>
                   </div>
                 ))}
+                {sortedUsers.length === 0 && <div className="text-slate-500 text-sm">No high scores yet</div>}
               </div>
             </div>
           </div>

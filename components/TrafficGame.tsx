@@ -26,6 +26,7 @@ const TrafficGame: React.FC = () => {
   
   const currentZoneLimitRef = useRef<number>(MAX_SPEED); 
   const overspeedTimerRef = useRef<number>(0); 
+  const isGameEndedRef = useRef<boolean>(false); // Track if score was saved for current run
 
   const inputRef = useRef({ left: false, right: false, up: false, down: false });
   const objectsRef = useRef<TrafficObject[]>([]);
@@ -64,6 +65,14 @@ const TrafficGame: React.FC = () => {
     allUsers: []
   });
 
+  // Ref to hold current user for access inside game loop (avoids stale closure)
+  const currentUserRef = useRef<User | null>(null);
+
+  // Sync ref with state
+  useEffect(() => {
+    currentUserRef.current = uiState.currentUser;
+  }, [uiState.currentUser]);
+
   const setMessage = (msg: string, type: 'good' | 'bad' | 'neutral') => {
     metricsRef.current.message = msg;
     metricsRef.current.messageType = type;
@@ -83,11 +92,30 @@ const TrafficGame: React.FC = () => {
     setUiState(prev => ({ ...prev, allUsers: users }));
   }, []);
 
+  // Save score helper
+  const saveScore = () => {
+    if (currentUserRef.current) {
+      const currentScore = metricsRef.current.score;
+      const updatedUsers = updateUserScore(currentUserRef.current.username, currentScore);
+      setUiState(prev => ({ ...prev, allUsers: updatedUsers }));
+    }
+  };
+
+  // Save on unmount if playing
+  useEffect(() => {
+    return () => {
+      if (gameStateRef.current === GameState.PLAYING) {
+        saveScore();
+      }
+    };
+  }, []);
+
   // --- User Management Functions ---
   const handleLogin = (username: string) => {
     const user = saveUser(username);
     const users = getStoredUsers();
     gameStateRef.current = GameState.START;
+    isGameEndedRef.current = false;
     setUiState(prev => ({ 
       ...prev, 
       currentUser: user, 
@@ -111,12 +139,18 @@ const TrafficGame: React.FC = () => {
   };
 
   const handleLogout = () => {
+    // Save score if abandoning game
+    if (gameStateRef.current === GameState.PLAYING) {
+      saveScore();
+    }
+
     gameStateRef.current = GameState.LOGIN;
     setUiState(prev => ({ ...prev, currentUser: null, gameState: GameState.LOGIN }));
   };
 
   const startGame = () => {
     gameStateRef.current = GameState.PLAYING;
+    isGameEndedRef.current = false;
     metricsRef.current = { 
       score: 0, 
       distance: 0, 
@@ -606,9 +640,11 @@ const TrafficGame: React.FC = () => {
       }
 
       // Handle Game Over Logic (Save Score Once)
-      if (gameStateRef.current === GameState.GAME_OVER && uiState.gameState !== GameState.GAME_OVER) {
-         if (uiState.currentUser) {
-            const updatedUsers = updateUserScore(uiState.currentUser.username, metrics.score);
+      if (gameStateRef.current === GameState.GAME_OVER && !isGameEndedRef.current) {
+         isGameEndedRef.current = true;
+         if (currentUserRef.current) {
+            // Save score using Ref to avoid stale closure
+            const updatedUsers = updateUserScore(currentUserRef.current.username, metrics.score);
             setUiState(prev => ({ ...prev, allUsers: updatedUsers }));
          }
       }
