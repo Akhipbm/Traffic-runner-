@@ -4,12 +4,13 @@ import {
   CANVAS_WIDTH, CANVAS_HEIGHT, ROAD_X, LANE_WIDTH, ROAD_WIDTH,
   PLAYER_Y, PLAYER_WIDTH, PLAYER_HEIGHT, MAX_SPEED, ACCELERATION,
   BRAKING, FRICTION, COLOR_GRASS, COLOR_ROAD, COLOR_MARKING,
-  TREE_WIDTH, TREE_HEIGHT
+  TREE_WIDTH, TREE_HEIGHT, TROLL_FACE_URI
 } from '../constants';
 import GameUI from './GameUI';
 
 const TrafficGame: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const faceImageRef = useRef<HTMLImageElement | null>(null);
   
   // Game State Refs
   const gameStateRef = useRef<GameState>(GameState.START);
@@ -54,6 +55,15 @@ const TrafficGame: React.FC = () => {
     metricsRef.current.messageType = type;
     messageTimerRef.current = 120; 
   };
+
+  // Preload Image
+  useEffect(() => {
+    const img = new Image();
+    img.src = TROLL_FACE_URI;
+    img.onload = () => {
+      faceImageRef.current = img;
+    };
+  }, []);
 
   const startGame = () => {
     gameStateRef.current = GameState.PLAYING;
@@ -117,7 +127,8 @@ const TrafficGame: React.FC = () => {
         peds.push({
           id: id + '_p_' + i,
           x: direction === 1 ? ROAD_X - 30 - (Math.random() * 50) : ROAD_X + ROAD_WIDTH + 30 + (Math.random() * 50),
-          speed: 1 + Math.random() * 1.5,
+          // Slower speed: 0.5 to 1.0 (was 1.0 to 2.5)
+          speed: 0.5 + Math.random() * 0.5,
           direction: direction,
           walkingPhase: 0
         });
@@ -328,8 +339,6 @@ const TrafficGame: React.FC = () => {
                  setMessage('RAN RED LIGHT! -50', 'bad');
                  obj.processed = true;
                } else if (isYellowToRed) {
-                 // Soft penalty if rushing through late yellow, or no penalty if close?
-                 // Let's strict it up a bit for game challenge
                  metrics.score -= 10;
                  setMessage('RISKY YELLOW! -10', 'neutral');
                  obj.processed = true;
@@ -592,36 +601,45 @@ const TrafficGame: React.FC = () => {
                  const px = ped.x;
                  const py = y + 15;
                  
-                 ctx.strokeStyle = '#fff';
+                 // BLACK STICK FIGURE
+                 ctx.strokeStyle = '#000000';
                  ctx.lineWidth = 3;
                  ctx.lineCap = 'round';
                  
-                 // Head
-                 ctx.beginPath();
-                 ctx.arc(px, py, 6, 0, Math.PI * 2);
-                 ctx.stroke();
+                 // Head (Image)
+                 if (faceImageRef.current) {
+                   // Draw Image at head position
+                   ctx.drawImage(faceImageRef.current, px - 12, py - 12, 24, 24);
+                 } else {
+                    // Fallback Head
+                    ctx.beginPath();
+                    ctx.arc(px, py, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                    ctx.stroke();
+                 }
                  
                  // Body
                  ctx.beginPath();
-                 ctx.moveTo(px, py + 6);
-                 ctx.lineTo(px, py + 25);
+                 ctx.moveTo(px, py + 12);
+                 ctx.lineTo(px, py + 30);
                  ctx.stroke();
 
                  // Legs (Animate)
                  const phase = Math.sin(ped.walkingPhase);
                  ctx.beginPath();
-                 ctx.moveTo(px, py + 25);
-                 ctx.lineTo(px - (5 * phase), py + 40);
-                 ctx.moveTo(px, py + 25);
-                 ctx.lineTo(px + (5 * phase), py + 40);
+                 ctx.moveTo(px, py + 30);
+                 ctx.lineTo(px - (5 * phase), py + 45);
+                 ctx.moveTo(px, py + 30);
+                 ctx.lineTo(px + (5 * phase), py + 45);
                  ctx.stroke();
                  
                  // Arms
                  ctx.beginPath();
-                 ctx.moveTo(px, py + 12);
-                 ctx.lineTo(px - (5 * -phase), py + 20);
-                 ctx.moveTo(px, py + 12);
-                 ctx.lineTo(px + (5 * -phase), py + 20);
+                 ctx.moveTo(px, py + 18);
+                 ctx.lineTo(px - (5 * -phase), py + 26);
+                 ctx.moveTo(px, py + 18);
+                 ctx.lineTo(px + (5 * -phase), py + 26);
                  ctx.stroke();
               });
            }
