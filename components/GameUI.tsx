@@ -38,6 +38,10 @@ const GameUI: React.FC<GameUIProps> = ({
 
   const sortedUsers = [...allUsers].sort((a, b) => b.highScore - a.highScore);
   const isWin = metrics.distance >= 2000;
+  
+  // Calculate total infractions for Perfect Game check
+  const totalInfractions = (Object.values(metrics.infractions) as number[]).reduce((a, b) => a + b, 0);
+  const isPerfectRun = isWin && totalInfractions === 0;
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6">
@@ -240,12 +244,24 @@ const GameUI: React.FC<GameUIProps> = ({
 
       {/* GAME OVER / FINISH SCREEN */}
       {gameState === GameState.GAME_OVER && (
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-auto backdrop-blur-sm ${isWin ? 'bg-green-900/80' : 'bg-red-900/80'}`}>
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-auto backdrop-blur-sm 
+          ${isPerfectRun ? 'bg-yellow-900/80' : isWin ? 'bg-green-900/80' : 'bg-red-900/80'}`}>
           <div className="flex gap-6 items-center">
-            <div className={`bg-white p-8 rounded-2xl max-w-md text-center shadow-2xl border-4 ${isWin ? 'border-green-500' : 'border-red-500'}`}>
-              <h2 className={`text-3xl font-black mb-2 ${isWin ? 'text-green-600' : 'text-red-600'}`}>
-                {isWin ? 'COURSE COMPLETED!' : 'LICENSE REVOKED!'}
+            <div className={`bg-white p-8 rounded-2xl max-w-md text-center shadow-2xl border-4 
+              ${isPerfectRun ? 'border-yellow-400' : isWin ? 'border-green-500' : 'border-red-500'}`}>
+              
+              {/* TROPHY FOR PERFECT RUN */}
+              {isPerfectRun && <div className="text-6xl mb-4 animate-bounce">🏆</div>}
+
+              <h2 className={`text-3xl font-black mb-2 
+                ${isPerfectRun ? 'text-yellow-600' : isWin ? 'text-green-600' : 'text-red-600'}`}>
+                {isPerfectRun ? 'SUPER GOOD DRIVER!' : isWin ? 'COURSE COMPLETED!' : 'LICENSE REVOKED!'}
               </h2>
+              
+              {isPerfectRun && (
+                <p className="text-slate-600 font-bold mb-4">Congratulations! Perfect Driving!</p>
+              )}
+
               <div className="text-6xl font-black text-slate-900 mb-2">{Math.floor(metrics.score)}</div>
               <p className="text-slate-500 uppercase tracking-widest font-bold mb-6">Final Score</p>
               

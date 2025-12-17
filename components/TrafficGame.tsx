@@ -562,14 +562,14 @@ const TrafficGame: React.FC = () => {
                 }
             }
             
-            // Hitting bump
-            if (playerRearY < bumpY && playerNoseY + 20 > bumpY) {
+            // Hitting bump (FIXED COLLISION LOGIC)
+            if (bumpY > playerNoseY && bumpY < playerRearY) {
                const maxBumpSpeed = obj.limit || 5; 
                if (player.speed > maxBumpSpeed) {
                  metrics.score -= 30;
                  metrics.infractions.bumps++; // Track
                  setMessage('HIT BUMP TOO FAST! -30', 'bad');
-                 playerRef.current.speed *= 0.8;
+                 playerRef.current.speed *= 0.5; // Strong slow down
                } else {
                  metrics.score += 15;
                  setMessage('Good Bump Speed +15', 'good');
