@@ -202,7 +202,7 @@ const TrafficGame: React.FC = () => {
     } else if (type === TrafficObjectType.SPEED_LIMIT) {
       newObj.limit = Math.random() > 0.5 ? 8 : 12; // 80kmh or 120kmh
     } else if (type === TrafficObjectType.SPEED_BUMP) {
-      newObj.limit = 10; 
+      newObj.limit = 1.0; // 10 km/h displayed limit
     } else if (type === TrafficObjectType.ZEBRA_CROSSING) {
       // Spawn 1 to 3 pedestrians
       const numPeds = 1 + Math.floor(Math.random() * 2);
@@ -580,21 +580,27 @@ const TrafficGame: React.FC = () => {
             const bumpY = obj.y + 20;
             const dist = bumpY - playerNoseY;
             
-            // Warning Zone (400px before bump) - UPDATED LIMIT TO 10
-            if (dist > 0 && dist < 400 && player.speed > 10) {
+            // Limit should be 10 km/h displayed. Display = floor(speed * 10).
+            // So if display > 10, penalty.
+            // floor(s*10) > 10  => s*10 >= 11 => s >= 1.1
+            const displayedSpeed = Math.floor(player.speed * 10);
+            const bumpSpeedLimit = 10; // 10 km/h
+
+            // Warning Zone (400px before bump)
+            if (dist > 0 && dist < 400 && displayedSpeed > bumpSpeedLimit) {
                 if (metrics.message === '' || metrics.messageType === 'good') {
                     setMessage('BUMP AHEAD! SLOW TO 10', 'neutral');
                 }
             }
             
-            // Hitting bump (FIXED COLLISION LOGIC)
+            // Hitting bump
             if (bumpY > playerNoseY && bumpY < playerRearY) {
-               const maxBumpSpeed = 10; 
-               if (player.speed > maxBumpSpeed) {
+               if (displayedSpeed > bumpSpeedLimit) {
                  metrics.score -= 30;
                  metrics.infractions.bumps++; // Track
                  setMessage('HIT BUMP TOO FAST! -30', 'bad');
-                 playerRef.current.speed *= 0.5; // Strong slow down
+                 // Slow down logic
+                 playerRef.current.speed = Math.max(player.speed * 0.5, 0); 
                } else {
                  metrics.score += 15;
                  setMessage('Good Bump Speed +15', 'good');
