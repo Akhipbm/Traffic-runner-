@@ -1,6 +1,6 @@
 import { User } from '../types';
 
-const STORAGE_KEY = 'traffic_runner_users';
+const STORAGE_KEY = 'traffic_runner_users_v2'; // Changed key to reset/avoid conflict with email version
 
 export const getStoredUsers = (): User[] => {
   try {
@@ -12,9 +12,9 @@ export const getStoredUsers = (): User[] => {
   }
 };
 
-export const saveUser = (email: string): User => {
+export const saveUser = (username: string): User => {
   const users = getStoredUsers();
-  const existing = users.find(u => u.email === email);
+  const existing = users.find(u => u.username === username);
   
   if (existing) {
     // Update last played
@@ -24,7 +24,7 @@ export const saveUser = (email: string): User => {
   }
 
   const newUser: User = {
-    email,
+    username,
     highScore: 0,
     lastPlayed: Date.now()
   };
@@ -34,9 +34,9 @@ export const saveUser = (email: string): User => {
   return newUser;
 };
 
-export const updateUserScore = (email: string, score: number): User[] => {
+export const updateUserScore = (username: string, score: number): User[] => {
   const users = getStoredUsers();
-  const userIndex = users.findIndex(u => u.email === email);
+  const userIndex = users.findIndex(u => u.username === username);
   
   if (userIndex !== -1) {
     if (score > users[userIndex].highScore) {
@@ -48,9 +48,9 @@ export const updateUserScore = (email: string, score: number): User[] => {
   return users;
 };
 
-export const deleteUser = (email: string): User[] => {
+export const deleteUser = (username: string): User[] => {
   let users = getStoredUsers();
-  users = users.filter(u => u.email !== email);
+  users = users.filter(u => u.username !== username);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
   return users;
 };

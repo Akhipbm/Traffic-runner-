@@ -1,4 +1,4 @@
-// ... (keeping existing imports)
+// ... (imports)
 import React, { useRef, useEffect, useState } from 'react';
 import { GameState, Lane, TrafficObject, TrafficObjectType, PlayerState, GameMetrics, Pedestrian, User } from '../types';
 import { 
@@ -34,7 +34,15 @@ const TrafficGame: React.FC = () => {
     distance: 0,
     message: '',
     messageType: 'neutral',
-    combo: 0
+    combo: 0,
+    infractions: {
+      redLights: 0,
+      stopSigns: 0,
+      speeding: 0,
+      bumps: 0,
+      pedestrians: 0,
+      crashes: 0
+    }
   });
   
   const spawnTimerRef = useRef(0);
@@ -76,8 +84,8 @@ const TrafficGame: React.FC = () => {
   }, []);
 
   // --- User Management Functions ---
-  const handleLogin = (email: string) => {
-    const user = saveUser(email);
+  const handleLogin = (username: string) => {
+    const user = saveUser(username);
     const users = getStoredUsers();
     gameStateRef.current = GameState.START;
     setUiState(prev => ({ 
@@ -88,16 +96,16 @@ const TrafficGame: React.FC = () => {
     }));
   };
 
-  const handleDeleteUser = (email: string) => {
-    const updatedUsers = deleteUser(email);
+  const handleDeleteUser = (username: string) => {
+    const updatedUsers = deleteUser(username);
     setUiState(prev => ({ 
       ...prev, 
       allUsers: updatedUsers,
       // If we deleted the current user, logout
-      currentUser: prev.currentUser?.email === email ? null : prev.currentUser,
-      gameState: prev.currentUser?.email === email ? GameState.LOGIN : prev.gameState
+      currentUser: prev.currentUser?.username === username ? null : prev.currentUser,
+      gameState: prev.currentUser?.username === username ? GameState.LOGIN : prev.gameState
     }));
-    if (uiState.currentUser?.email === email) {
+    if (uiState.currentUser?.username === username) {
       gameStateRef.current = GameState.LOGIN;
     }
   };
@@ -109,7 +117,21 @@ const TrafficGame: React.FC = () => {
 
   const startGame = () => {
     gameStateRef.current = GameState.PLAYING;
-    metricsRef.current = { score: 0, distance: 0, message: 'Drive Safely!', messageType: 'neutral', combo: 0 };
+    metricsRef.current = { 
+      score: 0, 
+      distance: 0, 
+      message: 'Drive Safely! Reach 2000m', 
+      messageType: 'neutral', 
+      combo: 0,
+      infractions: {
+        redLights: 0,
+        stopSigns: 0,
+        speeding: 0,
+        bumps: 0,
+        pedestrians: 0,
+        crashes: 0
+      }
+    };
     playerRef.current.speed = 0;
     playerRef.current.lane = Lane.CENTER;
     playerRef.current.x = ROAD_X + LANE_WIDTH * 1 + (LANE_WIDTH - PLAYER_WIDTH) / 2;
@@ -255,11 +277,18 @@ const TrafficGame: React.FC = () => {
 
         metrics.distance += (player.speed / 100);
         
+        // --- Distance Check for Win Condition ---
+        if (metrics.distance >= 2000) {
+           gameStateRef.current = GameState.GAME_OVER;
+           setMessage('COURSE COMPLETED!', 'good');
+        }
+        
         // Speed Checks
         if (player.speed > currentZoneLimitRef.current + 1) {
           overspeedTimerRef.current++;
           if (overspeedTimerRef.current > 60) {
             metrics.score -= 10;
+            metrics.infractions.speeding++; // Track infraction
             setMessage(`SLOW DOWN! Limit ${(currentZoneLimitRef.current * 10).toFixed(0)}`, 'bad');
             overspeedTimerRef.current = 0;
           }
@@ -379,6 +408,7 @@ const TrafficGame: React.FC = () => {
              if (playerRearY < stopLineY && playerNoseY + 10 > stopLineY) {
                if (isRed || isYellowToGreen) {
                  metrics.score -= 50;
+                 metrics.infractions.redLights++; // Track
                  setMessage('RAN RED LIGHT! -50', 'bad');
                  obj.processed = true;
                } else if (isYellowToRed) {
@@ -406,17 +436,19 @@ const TrafficGame: React.FC = () => {
           // Stop Sign with 5 Second Timer
           if (obj.type === TrafficObjectType.STOP_SIGN && !obj.processed) {
             const signLineY = obj.y + 50;
-            const stopZoneStart = signLineY - 150;
+            // WIDENED STOP ZONE: From 150px before to 300px before
+            const stopZoneStart = signLineY - 300; 
             
             // Check if player is in stop zone
-            if (playerNoseY > stopZoneStart && playerNoseY < signLineY + 10) {
-               // Check if player is stopped (speed < 0.5)
-               if (player.speed < 0.5) {
+            if (playerNoseY > stopZoneStart && playerNoseY < signLineY + 20) {
+               // INCREASED THRESHOLD: Check if player is effectively stopped (speed < 1.0)
+               if (player.speed < 1.0) {
                    if (obj.stopTimer !== undefined && obj.stopTimer > 0) {
                        obj.stopTimer--;
                        const secondsLeft = Math.ceil(obj.stopTimer / 60);
-                       if (metrics.message !== `WAIT... ${secondsLeft}s`) {
-                           setMessage(`WAIT... ${secondsLeft}s`, 'neutral');
+                       // Update message less frequently to avoid flicker, or just show it
+                       if (obj.stopTimer % 60 === 0) {
+                         // Optional: You could update UI message here, but the road text is better
                        }
                    } else {
                        obj.hasStopped = true;
@@ -425,7 +457,8 @@ const TrafficGame: React.FC = () => {
                } else {
                    // Moving in stop zone logic
                    if (!obj.hasStopped && metrics.messageType !== 'bad') {
-                       setMessage('STOP FOR 5 SECONDS', 'neutral');
+                       // Only spam this if we really need to warn
+                       if (Math.random() < 0.05) setMessage('STOP FOR 5s', 'neutral');
                    }
                }
             }
@@ -434,6 +467,7 @@ const TrafficGame: React.FC = () => {
             if (playerRearY < signLineY) {
                if (!obj.hasStopped) {
                  metrics.score -= 50;
+                 metrics.infractions.stopSigns++; // Track
                  setMessage('DID NOT WAIT 5s! -50', 'bad');
                } else {
                  metrics.score += 50;
@@ -467,6 +501,7 @@ const TrafficGame: React.FC = () => {
                    if (pedHitX > pLeft - 10 && pedHitX < pRight + 10 && 
                        pedHitY > pTop && pedHitY < pBottom) {
                        metrics.score = -999;
+                       metrics.infractions.pedestrians++; // Track
                        gameStateRef.current = GameState.GAME_OVER;
                        setMessage('HIT PEDESTRIAN! LICENSE REVOKED', 'bad');
                    }
@@ -481,6 +516,7 @@ const TrafficGame: React.FC = () => {
                
                if (anyoneOnRoad) {
                  metrics.score -= 50;
+                 metrics.infractions.pedestrians++; // Track
                  setMessage('FAILED TO YIELD! -50', 'bad');
                } else {
                  // Bonus if we waited properly (heuristic: user stopped near it)
@@ -531,6 +567,7 @@ const TrafficGame: React.FC = () => {
                const maxBumpSpeed = obj.limit || 5; 
                if (player.speed > maxBumpSpeed) {
                  metrics.score -= 30;
+                 metrics.infractions.bumps++; // Track
                  setMessage('HIT BUMP TOO FAST! -30', 'bad');
                  playerRef.current.speed *= 0.8;
                } else {
@@ -553,6 +590,7 @@ const TrafficGame: React.FC = () => {
                 player.y + PLAYER_HEIGHT > carY
              ) {
                 metrics.score -= 50;
+                metrics.infractions.crashes++; // Track
                 gameStateRef.current = GameState.GAME_OVER;
                 setMessage('CRASHED!', 'bad');
              }
@@ -570,7 +608,7 @@ const TrafficGame: React.FC = () => {
       // Handle Game Over Logic (Save Score Once)
       if (gameStateRef.current === GameState.GAME_OVER && uiState.gameState !== GameState.GAME_OVER) {
          if (uiState.currentUser) {
-            const updatedUsers = updateUserScore(uiState.currentUser.email, metrics.score);
+            const updatedUsers = updateUserScore(uiState.currentUser.username, metrics.score);
             setUiState(prev => ({ ...prev, allUsers: updatedUsers }));
          }
       }
@@ -663,28 +701,37 @@ const TrafficGame: React.FC = () => {
             ctx.restore();
 
             // Draw Countdown Timer if active or approaching
-            // Show if valid timer, not stopped yet (so counter is needed), and sufficiently close
             if (obj.stopTimer !== undefined && !obj.hasStopped && obj.y > 0 && obj.y < CANVAS_HEIGHT) {
                 const distToSign = obj.y - (player.y);
-                if (distToSign < 400 && distToSign > -100) {
+                // Increased visual range: from -300 to 500 relative to player (so player sees it coming)
+                if (distToSign < 500 && distToSign > -200) {
                     ctx.save();
                     ctx.translate(ROAD_X + ROAD_WIDTH / 2, lineY - 40);
                     
                     // background circle
                     ctx.beginPath();
-                    ctx.arc(0, 0, 30, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                    ctx.arc(0, 0, 40, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0,0,0,0.85)';
                     ctx.fill();
-                    ctx.strokeStyle = '#ef4444';
-                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = player.speed < 1.0 ? '#22c55e' : '#ef4444'; // Green if stopped, Red if moving
+                    ctx.lineWidth = 4;
                     ctx.stroke();
 
-                    const seconds = Math.ceil(obj.stopTimer / 60);
-                    ctx.fillStyle = '#ffffff'; 
-                    ctx.font = 'bold 30px monospace';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(seconds.toString(), 0, 2);
+                    
+                    if (player.speed >= 1.0) {
+                      ctx.fillStyle = '#ef4444'; 
+                      ctx.font = 'bold 20px Arial';
+                      ctx.fillText("STOP", 0, -10);
+                      ctx.font = 'bold 24px Arial';
+                      ctx.fillText("HERE", 0, 15);
+                    } else {
+                      const seconds = Math.ceil(obj.stopTimer / 60);
+                      ctx.fillStyle = '#ffffff'; 
+                      ctx.font = 'bold 40px monospace';
+                      ctx.fillText(seconds.toString(), 0, 2);
+                    }
                     ctx.restore();
                 }
             }

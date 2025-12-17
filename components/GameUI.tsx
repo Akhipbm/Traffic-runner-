@@ -7,8 +7,8 @@ interface GameUIProps {
   speed: number;
   currentUser: User | null;
   allUsers: User[];
-  onLogin: (email: string) => void;
-  onDeleteUser: (email: string) => void;
+  onLogin: (username: string) => void;
+  onDeleteUser: (username: string) => void;
   onLogout: () => void;
   onStart: () => void;
   onRestart: () => void;
@@ -26,17 +26,18 @@ const GameUI: React.FC<GameUIProps> = ({
   onStart, 
   onRestart 
 }) => {
-  const [emailInput, setEmailInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (emailInput.trim().length > 3 && emailInput.includes('@')) {
-      onLogin(emailInput.trim());
+    if (nameInput.trim().length > 0) {
+      onLogin(nameInput.trim());
     }
   };
 
   const sortedUsers = [...allUsers].sort((a, b) => b.highScore - a.highScore);
+  const isWin = metrics.distance >= 2000;
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6">
@@ -50,7 +51,9 @@ const GameUI: React.FC<GameUIProps> = ({
           
           <div className="bg-slate-900/80 text-white p-4 rounded-xl border border-slate-700 shadow-xl backdrop-blur-sm">
              <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Distance</div>
-             <div className="text-3xl font-mono font-bold">{Math.floor(metrics.distance)}m</div>
+             <div className="text-3xl font-mono font-bold">
+               {Math.floor(metrics.distance)} <span className="text-sm text-slate-400">/ 2000m</span>
+             </div>
           </div>
         </div>
       )}
@@ -59,7 +62,7 @@ const GameUI: React.FC<GameUIProps> = ({
       {gameState !== GameState.LOGIN && gameState !== GameState.PLAYING && (
          <div className="absolute top-4 right-4 pointer-events-auto flex gap-2">
             <div className="bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-600">
-               {currentUser?.email}
+               {currentUser?.username}
             </div>
             <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
               Logout
@@ -118,21 +121,21 @@ const GameUI: React.FC<GameUIProps> = ({
                <h1 className="text-4xl font-black text-slate-900 mb-6">TRAFFIC RUNNER</h1>
                <form onSubmit={handleLoginSubmit} className="space-y-4">
                  <div>
-                   <label className="block text-left text-sm font-bold text-slate-700 mb-1">Email ID</label>
+                   <label className="block text-left text-sm font-bold text-slate-700 mb-1">Enter Player Name</label>
                    <input 
-                     type="email" 
+                     type="text" 
                      required
                      className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
-                     placeholder="player@example.com"
-                     value={emailInput}
-                     onChange={(e) => setEmailInput(e.target.value)}
+                     placeholder="e.g. SpeedRacer"
+                     value={nameInput}
+                     onChange={(e) => setNameInput(e.target.value)}
                    />
                  </div>
                  <button 
                    type="submit"
                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-lg shadow-lg transition-colors"
                  >
-                   LOGIN TO PLAY
+                   PLAY NOW
                  </button>
                </form>
                <div className="mt-6 pt-6 border-t border-slate-200">
@@ -151,19 +154,19 @@ const GameUI: React.FC<GameUIProps> = ({
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-100 sticky top-0">
                       <tr>
-                        <th className="p-3 font-bold text-slate-700">Email</th>
+                        <th className="p-3 font-bold text-slate-700">Player</th>
                         <th className="p-3 font-bold text-slate-700">High Score</th>
                         <th className="p-3 font-bold text-slate-700 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {allUsers.map(u => (
-                        <tr key={u.email} className="border-b border-slate-100 hover:bg-slate-50">
-                           <td className="p-3 text-slate-800">{u.email}</td>
+                        <tr key={u.username} className="border-b border-slate-100 hover:bg-slate-50">
+                           <td className="p-3 text-slate-800">{u.username}</td>
                            <td className="p-3 text-slate-800 font-mono">{u.highScore}</td>
                            <td className="p-3 text-right">
                              <button 
-                               onClick={() => onDeleteUser(u.email)}
+                               onClick={() => onDeleteUser(u.username)}
                                className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 text-sm font-bold"
                              >
                                Delete
@@ -189,12 +192,13 @@ const GameUI: React.FC<GameUIProps> = ({
             {/* Main Menu */}
             <div className="bg-white p-8 rounded-2xl max-w-md text-center shadow-2xl">
               <h1 className="text-4xl font-black text-slate-900 mb-2">TRAFFIC RUNNER</h1>
-              <p className="text-slate-600 mb-6">Welcome, <span className="font-bold text-blue-600">{currentUser?.email}</span></p>
+              <p className="text-slate-600 mb-6">Welcome, <span className="font-bold text-blue-600">{currentUser?.username}</span></p>
               
               <div className="space-y-4 text-left bg-slate-100 p-4 rounded-lg mb-6 text-sm text-black">
+                 <div className="text-center font-bold text-slate-700 mb-2">OBJECTIVE: DRIVE 2000m</div>
                 <div className="flex items-center gap-2">
                   <span className="bg-red-500 text-white px-2 py-0.5 rounded text-xs font-bold">STOP</span>
-                  <span>at Red Lights & Stop Signs</span>
+                  <span>at Red Lights & Stop Signs (Wait 5s)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="bg-green-500 text-white px-2 py-0.5 rounded text-xs font-bold">GO</span>
@@ -219,10 +223,10 @@ const GameUI: React.FC<GameUIProps> = ({
               <h3 className="text-xl font-bold mb-4 text-yellow-400">TOP DRIVERS</h3>
               <div className="space-y-2">
                 {sortedUsers.slice(0, 5).map((u, idx) => (
-                  <div key={u.email} className="flex justify-between items-center bg-slate-700/50 p-2 rounded">
+                  <div key={u.username} className="flex justify-between items-center bg-slate-700/50 p-2 rounded">
                     <div className="flex flex-col overflow-hidden">
                        <span className="text-xs text-slate-400 font-bold">#{idx + 1}</span>
-                       <span className="text-sm truncate w-28" title={u.email}>{u.email.split('@')[0]}</span>
+                       <span className="text-sm truncate w-28" title={u.username}>{u.username}</span>
                     </div>
                     <span className="font-mono font-bold text-yellow-200">{u.highScore}</span>
                   </div>
@@ -234,20 +238,35 @@ const GameUI: React.FC<GameUIProps> = ({
         </div>
       )}
 
-      {/* GAME OVER SCREEN */}
+      {/* GAME OVER / FINISH SCREEN */}
       {gameState === GameState.GAME_OVER && (
-        <div className="absolute inset-0 bg-red-900/80 flex items-center justify-center pointer-events-auto backdrop-blur-sm">
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-auto backdrop-blur-sm ${isWin ? 'bg-green-900/80' : 'bg-red-900/80'}`}>
           <div className="flex gap-6 items-center">
-            <div className="bg-white p-8 rounded-2xl max-w-md text-center shadow-2xl border-4 border-red-500">
-              <h2 className="text-3xl font-black text-red-600 mb-2">LICENSE REVOKED!</h2>
+            <div className={`bg-white p-8 rounded-2xl max-w-md text-center shadow-2xl border-4 ${isWin ? 'border-green-500' : 'border-red-500'}`}>
+              <h2 className={`text-3xl font-black mb-2 ${isWin ? 'text-green-600' : 'text-red-600'}`}>
+                {isWin ? 'COURSE COMPLETED!' : 'LICENSE REVOKED!'}
+              </h2>
               <div className="text-6xl font-black text-slate-900 mb-2">{Math.floor(metrics.score)}</div>
-              <p className="text-slate-500 uppercase tracking-widest font-bold mb-8">Final Score</p>
+              <p className="text-slate-500 uppercase tracking-widest font-bold mb-6">Final Score</p>
               
+              {/* Traffic Violation Report */}
+              <div className="bg-slate-100 p-4 rounded-lg text-left mb-6 text-slate-800 text-sm w-full">
+                <h4 className="font-bold border-b border-slate-300 pb-2 mb-2 text-slate-600 uppercase tracking-wider text-xs">Traffic Violation Report</h4>
+                <div className="space-y-1">
+                  <div className="flex justify-between"><span>Red Lights Run:</span> <span className={`font-mono font-bold ${metrics.infractions.redLights > 0 ? 'text-red-600' : 'text-slate-400'}`}>{metrics.infractions.redLights}</span></div>
+                  <div className="flex justify-between"><span>Stop Sign Violations:</span> <span className={`font-mono font-bold ${metrics.infractions.stopSigns > 0 ? 'text-red-600' : 'text-slate-400'}`}>{metrics.infractions.stopSigns}</span></div>
+                  <div className="flex justify-between"><span>Speeding Incidents:</span> <span className={`font-mono font-bold ${metrics.infractions.speeding > 0 ? 'text-red-600' : 'text-slate-400'}`}>{metrics.infractions.speeding}</span></div>
+                  <div className="flex justify-between"><span>Bump Speeding:</span> <span className={`font-mono font-bold ${metrics.infractions.bumps > 0 ? 'text-red-600' : 'text-slate-400'}`}>{metrics.infractions.bumps}</span></div>
+                  <div className="flex justify-between"><span>Pedestrian Safety:</span> <span className={`font-mono font-bold ${metrics.infractions.pedestrians > 0 ? 'text-red-600' : 'text-slate-400'}`}>{metrics.infractions.pedestrians}</span></div>
+                  <div className="flex justify-between"><span>Crashes:</span> <span className={`font-mono font-bold ${metrics.infractions.crashes > 0 ? 'text-red-600' : 'text-slate-400'}`}>{metrics.infractions.crashes}</span></div>
+                </div>
+              </div>
+
               <button 
                 onClick={onRestart}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-colors"
               >
-                TRY AGAIN
+                PLAY AGAIN
               </button>
             </div>
 
@@ -256,10 +275,10 @@ const GameUI: React.FC<GameUIProps> = ({
               <h3 className="text-xl font-bold mb-4 text-yellow-400">LEADERBOARD</h3>
               <div className="space-y-2">
                 {sortedUsers.slice(0, 5).map((u, idx) => (
-                  <div key={u.email} className={`flex justify-between items-center p-2 rounded ${u.email === currentUser?.email ? 'bg-blue-900/50 border border-blue-500' : 'bg-slate-700/50'}`}>
+                  <div key={u.username} className={`flex justify-between items-center p-2 rounded ${u.username === currentUser?.username ? 'bg-blue-900/50 border border-blue-500' : 'bg-slate-700/50'}`}>
                     <div className="flex flex-col overflow-hidden">
                        <span className="text-xs text-slate-400 font-bold">#{idx + 1}</span>
-                       <span className="text-sm truncate w-28" title={u.email}>{u.email.split('@')[0]}</span>
+                       <span className="text-sm truncate w-28" title={u.username}>{u.username}</span>
                     </div>
                     <span className="font-mono font-bold text-yellow-200">{u.highScore}</span>
                   </div>

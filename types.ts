@@ -22,7 +22,7 @@ export enum TrafficObjectType {
 }
 
 export interface User {
-  email: string;
+  username: string; // Changed from email
   highScore: number;
   lastPlayed: number; // Timestamp
 }
@@ -64,10 +64,20 @@ export interface PlayerState {
   y: number; // Fixed visual position usually
 }
 
+export interface Infractions {
+  redLights: number;
+  stopSigns: number;
+  speeding: number;
+  bumps: number;
+  pedestrians: number;
+  crashes: number;
+}
+
 export interface GameMetrics {
   score: number;
   distance: number;
   message: string;
   messageType: 'neutral' | 'good' | 'bad';
   combo: number;
+  infractions: Infractions;
 }
