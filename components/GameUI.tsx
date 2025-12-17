@@ -308,6 +308,22 @@ const GameUI: React.FC<GameUIProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Buy Me A Coffee Widget */}
+      <a 
+        href="https://buymeacoffee.com/akhi.pbm" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="absolute bottom-4 left-4 pointer-events-auto z-50 group"
+        title="Buy me a coffee"
+      >
+        <div className="bg-[#FFDD00] hover:bg-[#FFEA00] text-slate-900 p-2 rounded-full shadow-xl border-2 border-slate-900 transition-all hover:scale-110 active:scale-95 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z" />
+            </svg>
+            <span className="font-bold text-xs hidden group-hover:block whitespace-nowrap">Buy me a coffee</span>
+        </div>
+      </a>
     </div>
   );
 };

@@ -216,7 +216,8 @@ const TrafficGame: React.FC = () => {
     } else if (type === TrafficObjectType.SPEED_LIMIT) {
       newObj.limit = Math.random() > 0.5 ? 8 : 12; // 80kmh or 120kmh
     } else if (type === TrafficObjectType.SPEED_BUMP) {
-      newObj.limit = 5; // ~50kmh
+      // UPDATED: Limit increased to 10
+      newObj.limit = 10; 
     } else if (type === TrafficObjectType.ZEBRA_CROSSING) {
       // Spawn 1 to 3 pedestrians
       const numPeds = 1 + Math.floor(Math.random() * 2);
@@ -438,13 +439,17 @@ const TrafficGame: React.FC = () => {
                }
              }
 
-             // Crossing check
-             if (playerRearY < stopLineY && playerNoseY + 10 > stopLineY) {
+             // Crossing check (FIXED LOGIC)
+             // Check if line has passed the nose AND is still "under" the car (between nose and rear)
+             if (stopLineY > playerNoseY + 10 && stopLineY < playerRearY) {
                if (isRed || isYellowToGreen) {
-                 metrics.score -= 50;
-                 metrics.infractions.redLights++; // Track
-                 setMessage('RAN RED LIGHT! -50', 'bad');
-                 obj.processed = true;
+                 // UPDATED: Strict check - if moving at all (> 0), it's a penalty
+                 if (player.speed > 0) {
+                    metrics.score -= 50;
+                    metrics.infractions.redLights++; // Track
+                    setMessage('RAN RED LIGHT! -50', 'bad');
+                    obj.processed = true;
+                 }
                } else if (isYellowToRed) {
                  metrics.score -= 10;
                  setMessage('RISKY YELLOW! -10', 'neutral');
@@ -457,7 +462,8 @@ const TrafficGame: React.FC = () => {
              }
              
              // Waiting bonus
-             if (stopLineY > playerNoseY && stopLineY < playerNoseY + 150 && player.speed === 0) {
+             // Adjusted range to include "before line" and "at line"
+             if (stopLineY > playerNoseY - 100 && stopLineY < playerNoseY + 50 && player.speed === 0) {
                if (isRed || isYellowToGreen) {
                   if (metrics.message !== 'WAITING...') {
                     setMessage('WAITING...', 'good');
@@ -589,16 +595,16 @@ const TrafficGame: React.FC = () => {
             const bumpY = obj.y + 20;
             const dist = bumpY - playerNoseY;
             
-            // Warning Zone (400px before bump)
-            if (dist > 0 && dist < 400 && player.speed > 5) {
+            // Warning Zone (400px before bump) - UPDATED LIMIT TO 10
+            if (dist > 0 && dist < 400 && player.speed > 10) {
                 if (metrics.message === '' || metrics.messageType === 'good') {
-                    setMessage('BUMP AHEAD! SLOW TO 5', 'neutral');
+                    setMessage('BUMP AHEAD! SLOW TO 10', 'neutral');
                 }
             }
             
             // Hitting bump (FIXED COLLISION LOGIC)
             if (bumpY > playerNoseY && bumpY < playerRearY) {
-               const maxBumpSpeed = obj.limit || 5; 
+               const maxBumpSpeed = obj.limit || 10; 
                if (player.speed > maxBumpSpeed) {
                  metrics.score -= 30;
                  metrics.infractions.bumps++; // Track
