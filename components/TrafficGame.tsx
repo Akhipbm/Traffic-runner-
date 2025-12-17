@@ -155,6 +155,7 @@ const TrafficGame: React.FC = () => {
       newObj.timer = 300; 
     } else if (type === TrafficObjectType.STOP_SIGN) {
       newObj.hasStopped = false;
+      newObj.stopTimer = 300; // 5 seconds wait time (60 frames * 5)
     } else if (type === TrafficObjectType.SPEED_LIMIT) {
       newObj.limit = Math.random() > 0.5 ? 8 : 12; // 80kmh or 120kmh
     } else if (type === TrafficObjectType.SPEED_BUMP) {
@@ -401,23 +402,41 @@ const TrafficGame: React.FC = () => {
              }
           }
 
-          // Stop Sign
+          // Stop Sign with 5 Second Timer
           if (obj.type === TrafficObjectType.STOP_SIGN && !obj.processed) {
             const signLineY = obj.y + 50;
-            if (playerNoseY > signLineY - 150 && playerNoseY < signLineY) {
-               if (metrics.message !== 'STOP AHEAD') setMessage('STOP AHEAD', 'neutral');
-               if (player.speed < 1) {
-                 obj.hasStopped = true;
-                 setMessage('Perfect Stop!', 'good');
+            const stopZoneStart = signLineY - 150;
+            
+            // Check if player is in stop zone
+            if (playerNoseY > stopZoneStart && playerNoseY < signLineY + 10) {
+               // Check if player is stopped (speed < 0.5)
+               if (player.speed < 0.5) {
+                   if (obj.stopTimer !== undefined && obj.stopTimer > 0) {
+                       obj.stopTimer--;
+                       const secondsLeft = Math.ceil(obj.stopTimer / 60);
+                       if (metrics.message !== `WAIT... ${secondsLeft}s`) {
+                           setMessage(`WAIT... ${secondsLeft}s`, 'neutral');
+                       }
+                   } else {
+                       obj.hasStopped = true;
+                       if (metrics.message !== 'GO!') setMessage('GO!', 'good');
+                   }
+               } else {
+                   // Moving in stop zone logic
+                   if (!obj.hasStopped && metrics.messageType !== 'bad') {
+                       setMessage('STOP FOR 5 SECONDS', 'neutral');
+                   }
                }
             }
+
+            // Passing the stop line
             if (playerRearY < signLineY) {
                if (!obj.hasStopped) {
-                 metrics.score -= 30;
-                 setMessage('IGNORED STOP SIGN! -30', 'bad');
+                 metrics.score -= 50;
+                 setMessage('DID NOT WAIT 5s! -50', 'bad');
                } else {
                  metrics.score += 50;
-                 setMessage('Obeyed Stop Sign +50', 'good');
+                 setMessage('Perfect Stop +50', 'good');
                }
                obj.processed = true;
             }
@@ -494,9 +513,19 @@ const TrafficGame: React.FC = () => {
              }
           }
 
-          // Speed Bump
+          // Speed Bump with Warning and Penalty
           if (obj.type === TrafficObjectType.SPEED_BUMP && !obj.processed) {
-            const bumpY = obj.y + 20; 
+            const bumpY = obj.y + 20;
+            const dist = bumpY - playerNoseY;
+            
+            // Warning Zone (400px before bump)
+            if (dist > 0 && dist < 400 && player.speed > 5) {
+                if (metrics.message === '' || metrics.messageType === 'good') {
+                    setMessage('BUMP AHEAD! SLOW TO 5', 'neutral');
+                }
+            }
+            
+            // Hitting bump
             if (playerRearY < bumpY && playerNoseY + 20 > bumpY) {
                const maxBumpSpeed = obj.limit || 5; 
                if (player.speed > maxBumpSpeed) {
@@ -631,6 +660,19 @@ const TrafficGame: React.FC = () => {
             ctx.textBaseline = 'middle';
             ctx.fillText('STOP', 0, 0);
             ctx.restore();
+
+            // Draw Countdown Timer if active
+            if (obj.stopTimer !== undefined && obj.stopTimer > 0 && obj.stopTimer < 300) {
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 40px Arial';
+                ctx.shadowColor = 'black';
+                ctx.shadowBlur = 4;
+                ctx.textAlign = 'center';
+                // Draw it on the road in front of the line
+                ctx.fillText(Math.ceil(obj.stopTimer / 60).toString(), ROAD_X + ROAD_WIDTH / 2, lineY - 30);
+                ctx.restore();
+            }
          }
 
          // ZEBRA CROSSING

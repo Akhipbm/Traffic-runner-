@@ -53,6 +53,7 @@ export interface TrafficObject {
   speed?: number; // For obstacle cars
   color?: string; // For obstacle cars
   pedestrians?: Pedestrian[]; // For Zebra Crossing
+  stopTimer?: number; // For stop sign countdown (frames)
 }
 
 export interface PlayerState {
