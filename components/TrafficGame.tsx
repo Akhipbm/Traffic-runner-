@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { GameState, Lane, TrafficObject, TrafficObjectType, PlayerState, GameMetrics, Pedestrian } from '../types';
+import { GameState, Lane, TrafficObject, TrafficObjectType, PlayerState, GameMetrics, Pedestrian, User } from '../types';
 import { 
   CANVAS_WIDTH, CANVAS_HEIGHT, ROAD_X, LANE_WIDTH, ROAD_WIDTH,
   PLAYER_Y, PLAYER_WIDTH, PLAYER_HEIGHT, MAX_SPEED, ACCELERATION,
   BRAKING, FRICTION, COLOR_GRASS, COLOR_ROAD, COLOR_MARKING,
   TREE_WIDTH, TREE_HEIGHT, TROLL_FACE_URI
 } from '../constants';
+import { getStoredUsers, saveUser, updateUserScore, deleteUser } from '../utils/storage';
 import GameUI from './GameUI';
 
 const TrafficGame: React.FC = () => {
@@ -13,7 +14,7 @@ const TrafficGame: React.FC = () => {
   const faceImageRef = useRef<HTMLImageElement | null>(null);
   
   // Game State Refs
-  const gameStateRef = useRef<GameState>(GameState.START);
+  const gameStateRef = useRef<GameState>(GameState.LOGIN);
   const playerRef = useRef<PlayerState>({
     lane: Lane.CENTER,
     speed: 0,
@@ -44,10 +45,14 @@ const TrafficGame: React.FC = () => {
     gameState: GameState;
     metrics: GameMetrics;
     speed: number;
+    currentUser: User | null;
+    allUsers: User[];
   }>({
-    gameState: GameState.START,
+    gameState: GameState.LOGIN,
     metrics: metricsRef.current,
-    speed: 0
+    speed: 0,
+    currentUser: null,
+    allUsers: []
   });
 
   const setMessage = (msg: string, type: 'good' | 'bad' | 'neutral') => {
@@ -56,14 +61,50 @@ const TrafficGame: React.FC = () => {
     messageTimerRef.current = 120; 
   };
 
-  // Preload Image
+  // Preload Image & Users
   useEffect(() => {
     const img = new Image();
     img.src = TROLL_FACE_URI;
     img.onload = () => {
       faceImageRef.current = img;
     };
+    
+    // Load users from storage
+    const users = getStoredUsers();
+    setUiState(prev => ({ ...prev, allUsers: users }));
   }, []);
+
+  // --- User Management Functions ---
+  const handleLogin = (email: string) => {
+    const user = saveUser(email);
+    const users = getStoredUsers();
+    gameStateRef.current = GameState.START;
+    setUiState(prev => ({ 
+      ...prev, 
+      currentUser: user, 
+      allUsers: users,
+      gameState: GameState.START 
+    }));
+  };
+
+  const handleDeleteUser = (email: string) => {
+    const updatedUsers = deleteUser(email);
+    setUiState(prev => ({ 
+      ...prev, 
+      allUsers: updatedUsers,
+      // If we deleted the current user, logout
+      currentUser: prev.currentUser?.email === email ? null : prev.currentUser,
+      gameState: prev.currentUser?.email === email ? GameState.LOGIN : prev.gameState
+    }));
+    if (uiState.currentUser?.email === email) {
+      gameStateRef.current = GameState.LOGIN;
+    }
+  };
+
+  const handleLogout = () => {
+    gameStateRef.current = GameState.LOGIN;
+    setUiState(prev => ({ ...prev, currentUser: null, gameState: GameState.LOGIN }));
+  };
 
   const startGame = () => {
     gameStateRef.current = GameState.PLAYING;
@@ -496,6 +537,14 @@ const TrafficGame: React.FC = () => {
         }
       }
 
+      // Handle Game Over Logic (Save Score Once)
+      if (gameStateRef.current === GameState.GAME_OVER && uiState.gameState !== GameState.GAME_OVER) {
+         if (uiState.currentUser) {
+            const updatedUsers = updateUserScore(uiState.currentUser.email, metrics.score);
+            setUiState(prev => ({ ...prev, allUsers: updatedUsers }));
+         }
+      }
+
       // --- RENDERING ---
 
       // Background
@@ -814,11 +863,12 @@ const TrafficGame: React.FC = () => {
         }
       });
 
-      setUiState({
+      setUiState(prev => ({
+        ...prev,
         gameState: gameStateRef.current,
         metrics: { ...metricsRef.current },
         speed: playerRef.current.speed
-      });
+      }));
 
       animationFrameId = requestAnimationFrame(render);
     };
@@ -839,6 +889,11 @@ const TrafficGame: React.FC = () => {
         gameState={uiState.gameState} 
         metrics={uiState.metrics}
         speed={uiState.speed}
+        currentUser={uiState.currentUser}
+        allUsers={uiState.allUsers}
+        onLogin={handleLogin}
+        onDeleteUser={handleDeleteUser}
+        onLogout={handleLogout}
         onStart={startGame}
         onRestart={startGame}
       />

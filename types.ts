@@ -1,4 +1,5 @@
 export enum GameState {
+  LOGIN = 'LOGIN',
   START = 'START',
   PLAYING = 'PLAYING',
   GAME_OVER = 'GAME_OVER',
@@ -18,6 +19,12 @@ export enum TrafficObjectType {
   SPEED_BUMP = 'SPEED_BUMP',
   TREE = 'TREE',
   ZEBRA_CROSSING = 'ZEBRA_CROSSING',
+}
+
+export interface User {
+  email: string;
+  highScore: number;
+  lastPlayed: number; // Timestamp
 }
 
 export interface Pedestrian {
